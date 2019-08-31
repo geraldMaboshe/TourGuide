@@ -7,8 +7,8 @@
 ### How to run the app on your local machine
 - Clone the project to your prefered folder on your machine using the terminal
 - cd into the project folder
-- ``` yarn add
-- ``` react-native run-android 
+- ``` yarn add ```
+- ``` react-native run-android ```
 
 ### Tools used 
 - React Native
