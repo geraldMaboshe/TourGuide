@@ -13,3 +13,7 @@
 ### Tools used 
 - React Native
 - Android AVD 
+### How to contribute
+- Submit all updates to the submission branch
+
+
