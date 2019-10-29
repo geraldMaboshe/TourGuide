@@ -13,7 +13,6 @@ import axios from "axios";
 import PlaceInput from "./components/PlaceInput";
 import PolyLine from "@mapbox/polyline";
 import MapView, { Polyline, Marker } from "react-native-maps";
-import Tiles from './components/Tiles';
 
 export default class App extends Component {
   constructor(props) {
@@ -142,7 +141,7 @@ export default class App extends Component {
             userLatitude={userLatitude}
             userLongitude={userLongitude}
           />
-          <Tiles />
+       
         </View>
       </TouchableWithoutFeedback>
       );
