@@ -12,7 +12,7 @@ import apiKey from "./google_api_key";
 import _ from "lodash";
 import PolyLine from "@mapbox/polyline";
 
-export default class App extends Component {
+export default class Passenger extends Component {
   constructor(props) {
     super(props);
     this.state = {
