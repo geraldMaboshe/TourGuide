@@ -1,160 +1,128 @@
-import React, { Component } from "react";
-import {
-  Text,
-  StyleSheet,
-  Keyboard,
-  View,
-  PermissionsAndroid,
-  TouchableWithoutFeedback,
-  Platform
-} from "react-native";
-import MapScreen from "./MapScreen";
-import axios from "axios";
-import PlaceInput from "./components/PlaceInput";
-import PolyLine from "@mapbox/polyline";
-import MapView, { Polyline, Marker } from "react-native-maps";
+import React, {Component} from 'react';
+import {TextInput, View, StyleSheet, Text} from 'react-native';
+import MapView, {Polyline} from 'react-native-maps'; // remove PROVIDER_GOOGLE import if not using Google Maps
+import apiKey from './google_api_key';
+import _ from 'lodash';
+import PolyLine from '@mapbox/polyline';
 
-export default class App extends Component {
-  constructor(props) {
+
+
+export class App extends Component {
+  constructor(props){
     super(props);
     this.state = {
-      hasMapPermission: false,
-      userLatitude: 0,
-      userLongitude: 0,
-      destinationCoords: []
-    };
-    this.locationWatchId = null;
-    this.showDirectionsOnMap = this.showDirectionsOnMap.bind(this);
-    this.map = React.createRef();
+    error: "",
+    latitude: 0,
+    longitude: 0,
+    destination: "",
+    predictions: [],
+    pointCoords: []
+  };
+  //this.onChangeDestinationDebounced = _.debounce(this.onChangeDestination, 1000);   
   }
 
-  componentDidMount() {
-    this.requestFineLocation();
-  }
-
-  componentWillUnmount() {
-    navigator.geolocation.clearWatch(this.locationWatchId);
-  }
-
-  async showDirectionsOnMap(placeId) {
-    const { userLatitude, userLongitude } = this.state;
-    try {
-      const result = await axios.get(
-        `https://maps.googleapis.com/maps/api/directions/json?origin=${userLatitude},${userLongitude}&destination=place_id:${placeId}&key=AIzaSyAXpQAvtoxL8ZtyHQeirhEfn-yVF1iVkmo`
-      );
-      const points = PolyLine.decode(
-        result.data.routes[0].overview_polyline.points
-      );
-      const latLng = points.map(point => ({
-        latitude: point[0],
-        longitude: point[1]
-      }));
-      this.setState({ destinationCoords: latLng });
-      this.map.current.fitToCoordinates(latLng, {
-        edgePadding: { top: 40, bottom: 40, left: 40, right: 40 }
-      });
-      console.log(latLng);
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  hideKeyboard() {
-    Keyboard.dismiss();
-  }
-
-  getUserPosition() {
-    this.setState({ hasMapPermission: true });
-    this.locationWatchId = navigator.geolocation.watchPosition(
-      pos => {
+  componentDidMount(){
+    //Get current location and set initial region to this
+    navigator.geolocation.getCurrentPosition(
+      position => {
         this.setState({
-          userLatitude: pos.coords.latitude,
-          userLongitude: pos.coords.longitude
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
         });
+        this.getRouteDirections();
       },
-      err => console.warn(err),
-      {
-        enableHighAccuracy: true
-      }
+      error => this.setState({ error: error.message }),
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 }
     );
   }
 
-  async requestFineLocation() {
-    try {
-      if (Platform.OS === "android") {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+  async getRouteDirections(){
+      try {
+        const response = await fetch(
+          `https://maps.googleapis.com/maps/api/directions/json?origin=${this.state.latitude},${this.state.longitude}&destination=Universal+Studios+Hollywood&key=AIzaSyC4y4F3IFEUHRP69oXOAhT81zb_cuiVuk8`
         );
-        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          this.getUserPosition();
-        }
-      } else {
-        this.getUserPosition();
+        const json = await response.json();
+        const points = PolyLine.decode(json.routes[0].overview_polyline.points);
+        const pointCoords = points.map(point => {
+          return {latitude: point[0], longitude: point[1]};
+        });
+        this.setState({pointCoords});
+      } catch (error) {
+        console.error(error);
       }
-    } catch (err) {
-      console.warn(err);
+  }
+
+  async onChangeDestination(destination){
+    this.setState({ destination })
+    const apiUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?key=${apiKey}&input=${destination}&location=${this.state.latitude},${this.state.longitude}&radius=2000`;
+    try {
+      const result = await fetch(apiUrl);
+      const json = await result.json();
+      this.setState({
+        predictions: json.predictions
+      });
+    } catch (error) {
+      console.error(error)
     }
+   
   }
 
   render() {
-    const {
-      destinationCoords,
-      userLatitude,
-      userLongitude,
-      hasMapPermission
-    } = this.state;
-    let polyline = null;
-    let marker = null;
-    if (destinationCoords.length > 0) {
-      polyline = (
-        <Polyline
-          coordinates={destinationCoords}
-          strokeWidth={4}
-          strokeColor="#000"
-        />
-      );
-      marker = (
-        <Marker coordinate={destinationCoords[destinationCoords.length - 1]} />
-      );
+
+    const predictions =this.state.predictions.map(prediction => 
+    <Text style={styles.suggestions} key={prediction.id}>{prediction.description}</Text>)
+
+    return (
+      <View style={styles.container}>
+      <MapView
+      style={styles.map}
+      region={{
+        latitude: this.state.latitude,
+        longitude: this.state.longitude,
+        latitudeDelta: 0.015,
+        longitudeDelta: 0.0121,
+      }}
+      showsUserLocation = {true}
+        >
+      <Polyline 
+      coordinates = {this.state.pointCoords}
+      strokewidth = {2}
+      strokeColor = "red"
+    />
+    </MapView>
+  
+    <TextInput placeholder='Enter destination' value={this.state.destination}
+    onChangeText = {destination => 
+      //this.onChangeDestinationDebounced(destination)
+      this.onChangeDestination(destination)
     }
-    if (hasMapPermission) {
-      return (
-        <TouchableWithoutFeedback onPress={this.hideKeyboard}>
-        <View style={styles.container}>
-          <MapView
-            ref={this.map}
-            showsUserLocation
-            followsUserLocation
-            style={styles.map}
-            region={{
-              latitude: userLatitude,
-              longitude: userLongitude,
-              latitudeDelta: 0.015,
-              longitudeDelta: 0.0121
-            }}
-          >
-            {polyline}
-            {marker}
-          </MapView>
-          <PlaceInput
-            showDirectionsOnMap={this.showDirectionsOnMap}
-            userLatitude={userLatitude}
-            userLongitude={userLongitude}
-          />
-       
-        </View>
-      </TouchableWithoutFeedback>
-      );
-    }
-    return null;
+    style = {styles.destinationInput}
+    />
+    {predictions}
+    </View>
+    )
   }
 }
 
+export default App
+
+
 const styles = StyleSheet.create({
   container: {
-    height: 250,
+    ...StyleSheet.absoluteFillObject
   },
   map: {
     ...StyleSheet.absoluteFillObject
+  },
+  destinationInput: {
+    backgroundColor: 'white',
+    marginLeft: 5,
+    marginRight: 5
+  },
+  suggestions: {
+    backgroundColor: "white",
+    padding: 5,
+    borderWidth: 0.2,
+    fontSize: 18
   }
-});
+})
