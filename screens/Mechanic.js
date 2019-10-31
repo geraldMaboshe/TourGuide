@@ -5,14 +5,15 @@ import {
   Text,
   View,
   Keyboard,
-  TouchableHighlight
+  TouchableHighlight,
+  TouchableOpacity
 } from "react-native";
 import MapView, { Polyline, Marker } from "react-native-maps";
-import apiKey from "./google_api_key";
+import apiKey from "../google_api_key";
 import _ from "lodash";
 import PolyLine from "@mapbox/polyline";
 
-export default class Passenger extends Component {
+export default class Mechanic extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -23,10 +24,7 @@ export default class Passenger extends Component {
       predictions: [],
       pointCoords: []
     };
-    this.onChangeDestinationDebounced = _.debounce(
-      this.onChangeDestination,
-      1000
-    );
+
   }
 
   componentDidMount() {
@@ -70,24 +68,10 @@ export default class Passenger extends Component {
     }
   }
 
-  async onChangeDestination(destination) {
-    const apiUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?key=${apiKey}
-    &input=${destination}&location=${this.state.latitude},${
-      this.state.longitude
-    }&radius=2000`;
-    console.log(apiUrl);
-    try {
-      const result = await fetch(apiUrl);
-      const json = await result.json();
-      this.setState({
-        predictions: json.predictions
-      });
-      console.log(json);
-    } catch (err) {
-      console.error(err);
-    }
-  }
+  
+  async lookForMechanics(){
 
+  }
   render() {
     let marker = null;
 
@@ -98,24 +82,6 @@ export default class Passenger extends Component {
         />
       );
     }
-
-    const predictions = this.state.predictions.map(prediction => (
-      <TouchableHighlight
-        onPress={() =>
-          this.getRouteDirections(
-            prediction.place_id,
-            prediction.structured_formatting.main_text
-          )
-        }
-        key={prediction.id}
-      >
-        <View>
-          <Text style={styles.suggestions}>
-            {prediction.structured_formatting.main_text}
-          </Text>
-        </View>
-      </TouchableHighlight>
-    ));
 
     return (
       <View style={styles.container}>
@@ -139,24 +105,29 @@ export default class Passenger extends Component {
           />
           {marker}
         </MapView>
-        <TextInput
-          placeholder="Enter destination..."
-          style={styles.destinationInput}
-          value={this.state.destination}
-          clearButtonMode="always"
-          onChangeText={destination => {
-            console.log(destination);
-            this.setState({ destination });
-            this.onChangeDestinationDebounced(destination);
-          }}
-        />
-        {predictions}
+        <TouchableOpacity style = {styles.bottomButton} onPress = {() => this.lookForMechanics()}>
+          <View>
+            <Text style = {styles.bottomButtonText}>Find Motorist</Text>
+          </View>
+        </TouchableOpacity>
       </View>
     );
   }
 }
 
 const styles = StyleSheet.create({
+  bottomButton: {
+    backgroundColor:"black",
+    marginTop: 'auto',
+    margin: 80
+
+},
+bottomButtonText: {
+    color: "white",
+    fontSize: 18,
+    padding: 5,
+    alignSelf: "center"
+},
   suggestions: {
     backgroundColor: "white",
     padding: 5,

@@ -5,14 +5,16 @@ import {
   Text,
   View,
   Keyboard,
-  TouchableHighlight
+  TouchableHighlight,
+  TouchableOpacity
 } from "react-native";
 import MapView, { Polyline, Marker } from "react-native-maps";
-import apiKey from "./google_api_key";
+import apiKey from "../google_api_key";
 import _ from "lodash";
 import PolyLine from "@mapbox/polyline";
+import socketIO from 'socket.io-client';
 
-export default class Passenger extends Component {
+export default class Motorist extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -23,10 +25,10 @@ export default class Passenger extends Component {
       predictions: [],
       pointCoords: []
     };
-    this.onChangeDestinationDebounced = _.debounce(
-      this.onChangeDestination,
-      1000
-    );
+    // this.onChangeDestinationDebounced = _.debounce(
+    //   this.onChangeDestination,
+    //   1000
+    // );
   }
 
   componentDidMount() {
@@ -61,7 +63,8 @@ export default class Passenger extends Component {
       this.setState({
         pointCoords,
         predictions: [],
-        destination: destinationName
+        destination: destinationName,
+        routeResponse: json
       });
       Keyboard.dismiss();
       this.map.fitToCoordinates(pointCoords);
@@ -70,25 +73,37 @@ export default class Passenger extends Component {
     }
   }
 
-  async onChangeDestination(destination) {
-    const apiUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?key=${apiKey}
-    &input=${destination}&location=${this.state.latitude},${
-      this.state.longitude
-    }&radius=2000`;
-    console.log(apiUrl);
-    try {
-      const result = await fetch(apiUrl);
-      const json = await result.json();
-      this.setState({
-        predictions: json.predictions
+  // async onChangeDestination(destination) {
+  //   const apiUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?key=${apiKey}
+  //   &input=${destination}&location=${this.state.latitude},${
+  //     this.state.longitude
+  //   }&radius=2000`;
+  //   console.log(apiUrl);
+  //   try {
+  //     const result = await fetch(apiUrl);
+  //     const json = await result.json();
+  //     this.setState({
+  //       predictions: json.predictions
+  //     });
+  //     console.log(json);
+  //   } catch (err) {
+  //     console.error(err);
+  //   }
+  // }
+
+  async requestMechanic(){
+      const socket = socketIO.connect("http://192.168.43.178:3000");
+      socket.on('connect', () => {
+          console.log("client connected");
+          //Request repair
+          socket.emit("repairRequest", this.state.routeResponse);
+
       });
-      console.log(json);
-    } catch (err) {
-      console.error(err);
-    }
+
   }
 
   render() {
+
     let marker = null;
 
     if (this.state.pointCoords.length > 1) {
@@ -98,24 +113,31 @@ export default class Passenger extends Component {
         />
       );
     }
+    mechanicButton = (
+    <TouchableOpacity style = {styles.bottomButton} onPress = {() => this.requestMechanic()}>
+          <View>
+            <Text style = {styles.bottomButtonText}>Find Mechanic</Text>
+          </View>
+        </TouchableOpacity>
+    );
 
-    const predictions = this.state.predictions.map(prediction => (
-      <TouchableHighlight
-        onPress={() =>
-          this.getRouteDirections(
-            prediction.place_id,
-            prediction.structured_formatting.main_text
-          )
-        }
-        key={prediction.id}
-      >
-        <View>
-          <Text style={styles.suggestions}>
-            {prediction.structured_formatting.main_text}
-          </Text>
-        </View>
-      </TouchableHighlight>
-    ));
+    // const predictions = this.state.predictions.map(prediction => (
+    //   <TouchableHighlight
+    //     onPress={() =>
+    //       this.getRouteDirections(
+    //         prediction.place_id,
+    //         prediction.structured_formatting.main_text
+    //       )
+    //     }
+    //     key={prediction.id}
+    //   >
+    //     <View>
+    //       <Text style={styles.suggestions}>
+    //         {prediction.structured_formatting.main_text}
+    //       </Text>
+    //     </View>
+    //   </TouchableHighlight>
+    // ));
 
     return (
       <View style={styles.container}>
@@ -139,7 +161,7 @@ export default class Passenger extends Component {
           />
           {marker}
         </MapView>
-        <TextInput
+        {/* <TextInput
           placeholder="Enter destination..."
           style={styles.destinationInput}
           value={this.state.destination}
@@ -150,13 +172,26 @@ export default class Passenger extends Component {
             this.onChangeDestinationDebounced(destination);
           }}
         />
-        {predictions}
+        {predictions} */}
+        {mechanicButton}
       </View>
     );
   }
 }
 
 const styles = StyleSheet.create({
+  bottomButton: {
+      backgroundColor:"black",
+      marginTop: 'auto',
+      margin: 80
+
+  },
+  bottomButtonText: {
+      color: "white",
+      fontSize: 18,
+      padding: 5,
+      alignSelf: "center"
+  },
   suggestions: {
     backgroundColor: "white",
     padding: 5,
